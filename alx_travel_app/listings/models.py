@@ -1,36 +1,53 @@
-# Create your models here.
 from django.db import models
 from django.contrib.auth.models import User
+import uuid
+from django.core.validators import MinValueValidator,MaxValueValidator
+
 
 class Listing(models.Model):
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    price_per_night = models.DecimalField(max_digits=10, decimal_places=2)
-    location = models.CharField(max_length=255)
+    listing_id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    host = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100, null=False)
+    description = models.TextField(null=False)
+    location = models.CharField(max_length=100, null=False)
+    price_per_night = models.DecimalField(decimal_places=2,max_digits=9,null=False)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.title
+    updated_at = models.DateTimeField(auto_now_add=True)
 
 
 class Booking(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    listing = models.ForeignKey(Listing, on_delete=models.CASCADE)
-    check_in = models.DateField()
-    check_out = models.DateField()
-    booked_at = models.DateTimeField(auto_now_add=True)
+    BOOKING_STATUS = {
+        "pending": "PENDING",
+        "confirmed": "CONFIRMED",
+        "cancelled": "CANCELLED",
+    }
 
-    def __str__(self):
-        return f"{self.user.username} - {self.listing.title}"
+    booking_id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    start_date = models.DateTimeField(auto_now_add=True)
+    end_date = models.DateTimeField(auto_now_add=True)
+    total_price = models.DecimalField(decimal_places=2,max_digits=9,null=False)
+    status = models.CharField(choices=BOOKING_STATUS,max_length=15, null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Review(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    review_id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE)
-    rating = models.IntegerField()
-    comment = models.TextField(blank=True)
-    reviewed_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Review by {self.user.username} on {self.listing.title}"
-
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.IntegerField(validators=[MinValueValidator(1),MaxValueValidator(5)],null=False)
+    comment = models.TextField(null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
