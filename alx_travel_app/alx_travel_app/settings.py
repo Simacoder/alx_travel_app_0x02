@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +20,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-%w!-vzy0#&lokj*=!sl0-r4mn@jw%qpt=fsk1o5&v@4$2p$n4@"
 
-# SECURITY WARNING: don't run with debug turned on in production!
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-secret-key-for-dev")
+
 DEBUG = True
-
 ALLOWED_HOSTS = []
+
+CHAPA_SECRET_KEY = os.getenv("CHAPA_SECRET_KEY")
+CHAPA_BASE_URL = os.getenv("CHAPA_BASE_URL", "https://api.chapa.co/v1")
+CHAPA_CALLBACK_URL = os.getenv("CHAPA_CALLBACK_URL")
+CHAPA_CURRENCY = os.getenv("CHAPA_CURRENCY", "ETB")
+
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "simacoder@hotmail.com")
 
 
 # Application definition
@@ -37,6 +47,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'rest_framework',
+    'rest_framework.authtoken',
+    'corsheaders',
+    'listings',  
 ]
 
 MIDDLEWARE = [

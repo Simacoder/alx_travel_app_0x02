@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Django
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# Environment variables
+.env
+
+# Virtual environment
+venv/
+alx_env/
+.venv/
+alx_env/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS / Linux / Windows system files
+.DS_Store
+Thumbs.db

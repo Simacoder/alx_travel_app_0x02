@@ -63,3 +63,40 @@ class Review(models.Model):
     )
     comment = models.TextField(null=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Payment(models.Model):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+    PAYMENT_STATUS_CHOICES = [
+        (PENDING, "Pending"),
+        (COMPLETED, "Completed"),
+        (FAILED, "Failed"),
+    ]
+
+    payment_id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    booking = models.OneToOneField(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="payment"
+    )
+    amount = models.DecimalField(max_digits=9, decimal_places=2)
+    status = models.CharField(
+        max_length=15,
+        choices=PAYMENT_STATUS_CHOICES,
+        default=PENDING,
+        null=False
+    )
+    transaction_reference = models.CharField(max_length=100, unique=True)
+    chapa_transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Payment {self.payment_id} for Booking {self.booking.booking_id} - {self.status}"
