@@ -11,6 +11,9 @@ from rest_framework.decorators import action
 from django.contrib.auth import get_user_model
 from .models import Listing, Booking, Review
 from .serializers import ListingSerializer, BookingSerializer, ReviewSerializer
+from .tasks import send_payment_confirmation_email, send_payment_failure_email
+
+
 
 User = get_user_model()
 
@@ -70,81 +73,33 @@ class ListingViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+
+
 class BookingViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing Booking objects.
-    Users can only see and manage their own bookings.
-    """
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'booking_id'
 
     def get_queryset(self):
-        """Users can only see their own bookings."""
         return self.queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        """Set the user to the current user when creating a booking."""
+        """Set the user to the current user when creating a booking and trigger email."""
         listing_id = self.request.data.get('listing')
         try:
             listing = Listing.objects.get(listing_id=listing_id)
-            serializer.save(user=self.request.user, listing=listing)
+            booking = serializer.save(user=self.request.user, listing=listing)
+            
+            # Trigger asynchronous email task
+            send_payment_confirmation_email.delay(booking.booking_id)
+
         except Listing.DoesNotExist:
             return Response(
                 {"detail": "Listing not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    def create(self, request, *args, **kwargs):
-        """Override create to handle listing lookup properly."""
-        listing_id = request.data.get('listing')
-        if not listing_id:
-            return Response(
-                {"detail": "Listing ID is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            listing = Listing.objects.get(listing_id=listing_id)
-        except Listing.DoesNotExist:
-            return Response(
-                {"detail": "Listing not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Check if user is trying to book their own listing
-        if listing.host == request.user:
-            return Response(
-                {"detail": "You cannot book your own listing."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=request.user, listing=listing)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def update(self, request, *args, **kwargs):
-        """Only allow users to update their own bookings."""
-        booking = self.get_object()
-        if booking.user != request.user:
-            return Response(
-                {"detail": "You can only update your own bookings."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        """Only allow users to delete their own bookings."""
-        booking = self.get_object()
-        if booking.user != request.user:
-            return Response(
-                {"detail": "You can only delete your own bookings."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().destroy(request, *args, **kwargs)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -339,11 +294,24 @@ class PaymentViewSet(viewsets.ViewSet):
             payment.status = Payment.COMPLETED
             payment.chapa_transaction_id = data["data"].get("id")
             payment.save()
+
             booking = payment.booking
             booking.status = Booking.CONFIRMED
             booking.save()
+
+            # Trigger async email notification
+            send_payment_confirmation_email.delay(booking.booking_id)
+
             return Response({"detail": "Payment successful", "status": payment.status})
+
         else:
             payment.status = Payment.FAILED
             payment.save()
-            return Response({"detail": "Payment failed", "status": payment.status}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Trigger failure email asynchronously
+            send_payment_failure_email.delay(payment.booking.booking_id)
+
+            return Response(
+                {"detail": "Payment failed", "status": payment.status},
+                status=status.HTTP_400_BAD_REQUEST
+            )

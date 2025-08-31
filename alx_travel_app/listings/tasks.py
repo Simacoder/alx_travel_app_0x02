@@ -63,5 +63,7 @@ def send_payment_failure_email(booking_id):
         )
         return f"Payment failure email sent to {booking.user.email}"
 
+
+
     except Booking.DoesNotExist:
         return f"Booking with ID {booking_id} does not exist."

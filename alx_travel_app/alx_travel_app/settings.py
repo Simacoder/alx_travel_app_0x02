@@ -65,6 +65,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "alx_travel_app.urls"
 
+CELERY_BROKER_URL = "amqp://localhost"  # RabbitMQ default
+CELERY_RESULT_BACKEND = "rpc://"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
